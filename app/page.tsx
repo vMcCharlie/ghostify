@@ -10,7 +10,7 @@ const depositWasmUrl = process.env.NEXT_PUBLIC_DEPOSIT_ZK_WASM_URL; const deposi
 const spendWasmUrl = process.env.NEXT_PUBLIC_ZK_WASM_URL; const spendZkeyUrl = process.env.NEXT_PUBLIC_ZK_ZKEY_URL;
 const withdrawWasmUrl = process.env.NEXT_PUBLIC_WITHDRAW_ZK_WASM_URL; const withdrawZkeyUrl = process.env.NEXT_PUBLIC_WITHDRAW_ZK_ZKEY_URL;
 const poolStartBlock = BigInt(process.env.NEXT_PUBLIC_SHIELDED_POOL_START_BLOCK || '0');
-const logQueryBlockRange = BigInt(process.env.NEXT_PUBLIC_LOG_QUERY_BLOCK_RANGE || '100');
+const logQueryBlockRange = 100n;
 const client = createPublicClient({ chain: monadTestnet, transport: http(undefined, { retryCount: 0 }) });
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const isRateLimit = (error: unknown) => /limited to|rate limit|too many requests|429/i.test(error instanceof Error ? error.message : String(error));
