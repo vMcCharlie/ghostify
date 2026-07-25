@@ -55,7 +55,7 @@ export default function ShieldedPoolPage() {
   async function connect() { if (!window.ethereum) return setStatus('Install or unlock a wallet such as MetaMask.'); try { const wc = createWalletClient({ chain: monadTestnet, transport: custom(window.ethereum) }); const [account] = await wc.requestAddresses(); if (await wc.getChainId() !== monadTestnet.id) throw new Error('Switch to Monad Testnet (chain 10143).'); setWallet(account); setStatus(''); } catch (error) { setStatus(displayError(error)); } }
   function disconnect() { setWallet(''); setStatus(''); }
   async function poolLeaves() { const events = await poolEvents(); return events.map(log => ({ commitment: log.eventName === 'Deposit' ? log.args.commitment : log.args.newCommitment, block: log.blockNumber, index: log.logIndex })).sort((a, b) => a.block === b.block ? Number(a.index - b.index) : a.block < b.block ? -1 : 1).map(item => item.commitment); }
-  function selectedNote() { return notes.find(note => !note.spent && note.pool?.toLowerCase() === pool?.toLowerCase()); }
+  function selectedNote() { return notes.find(note => !note.spent && (note.pool || legacyPool).toLowerCase() === pool?.toLowerCase()); }
   async function waitForPoolPath(commitment: `0x${string}`) {
     let lastError: unknown;
     for (let attempt = 0; attempt < 8; attempt += 1) {
