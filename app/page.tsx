@@ -60,4 +60,15 @@ export default function SendPage() {
     <aside className="panel rounded-3xl p-6 sm:p-9"><p className="text-sm font-medium text-violet-300">HOW IT WORKS</p><h2 className="mt-2 text-2xl font-bold">Send with an address they already know.</h2><div className="mt-8 space-y-6">{[['01','Receiver opts in','They connect their wallet once and register public receive keys.'],['02','Paste a wallet address','Ghostify resolves the public receive profile on Monad.'],['03','Transfer privately','A one-time address protects the link to their primary wallet.']].map(([n,t,d]) => <div key={n} className="flex gap-4"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 font-mono text-sm font-bold text-violet-300">{n}</span><div><h3 className="font-semibold">{t}</h3><p className="mt-1 text-sm leading-5 text-slate-400">{d}</p></div></div>)}</div><div className="mt-8 rounded-2xl border border-violet-400/15 bg-violet-400/5 p-4 text-sm leading-6 text-violet-200">Testnet prototype: payment amount and timing remain public.</div></aside>
   </section></div></main>;
 }
-function Header() { return <header className="flex items-center justify-between"><a href="/" className="flex items-center gap-3 text-xl font-bold tracking-tight"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-lg">G</span>Ghostify</a><nav className="flex items-center gap-5"><a className="navlink" href="/">Send</a><a className="rounded-lg bg-white/8 px-3 py-2 text-sm font-medium text-white" href="/receive">Receive</a></nav></header>; }
+function WalletConnectButton() {
+  const [address, setAddress] = useState('');
+  async function connect() {
+    if (!window.ethereum) return alert('Install or unlock a wallet such as MetaMask.');
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];
+      if (accounts[0]) setAddress(accounts[0]);
+    } catch { /* user dismissed wallet connection */ }
+  }
+  return <button className="rounded-lg border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-sm font-semibold text-violet-200" onClick={connect}>{address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connect wallet'}</button>;
+}
+function Header() { return <header className="flex items-center justify-between"><a href="/" className="flex items-center gap-3 text-xl font-bold tracking-tight"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-lg">G</span>Ghostify</a><nav className="flex items-center gap-3"><WalletConnectButton /><a className="navlink" href="/">Send</a><a className="rounded-lg bg-white/8 px-3 py-2 text-sm font-medium text-white" href="/receive">Receive</a></nav></header>; }
