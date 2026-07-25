@@ -23,12 +23,12 @@ async function deploy(artifact, args = []) {
   const hash = await walletClient.deployContract({ ...artifact, args });
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
   if (!receipt.contractAddress) throw new Error(`Deployment failed: ${hash}`);
-  return receipt.contractAddress;
+  return { address: receipt.contractAddress, blockNumber: receipt.blockNumber };
 }
 
 const depositVerifier = await deploy(compile('contracts/src/ShieldedDepositVerifier.sol', 'Groth16Verifier'));
 const transferVerifier = await deploy(compile('contracts/src/ShieldedSpendVerifier.sol', 'Groth16Verifier'));
 const withdrawVerifier = await deploy(compile('contracts/src/ShieldedWithdrawVerifier.sol', 'Groth16Verifier'));
 const mimc = await deploy({ abi: [{ type: 'function', name: 'MiMCpe7', stateMutability: 'pure', inputs: [{ type: 'uint256', name: 'in_x' }, { type: 'uint256', name: 'in_k' }], outputs: [{ type: 'uint256', name: 'out_x' }] }], bytecode: mimc7Contract.createCode('mimc', 91) });
-const pool = await deploy(compile('contracts/src/ShieldedPool.sol', 'ShieldedPool'), [mimc, depositVerifier, transferVerifier, withdrawVerifier]);
-console.log(JSON.stringify({ depositVerifier, transferVerifier, withdrawVerifier, mimc, pool }, null, 2));
+const pool = await deploy(compile('contracts/src/ShieldedPool.sol', 'ShieldedPool'), [mimc.address, depositVerifier.address, transferVerifier.address, withdrawVerifier.address]);
+console.log(JSON.stringify({ depositVerifier: depositVerifier.address, transferVerifier: transferVerifier.address, withdrawVerifier: withdrawVerifier.address, mimc: mimc.address, pool: pool.address, poolStartBlock: pool.blockNumber.toString() }, null, 2));
