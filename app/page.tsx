@@ -31,7 +31,7 @@ type PoolEvent = { eventName: 'Deposit' | 'PrivateTransfer'; args: Record<string
 type PoolCache = { latest: string; events: Array<{ eventName: PoolEvent['eventName']; args: Record<string, any>; blockNumber: string; logIndex: string }> };
 const poolCacheKey = `ghostify-v3-pool-events-${pool || 'unconfigured'}-${poolStartBlock}`;
 function readPoolCache(): PoolCache { if (typeof window === 'undefined') return { latest: (poolStartBlock - 1n).toString(), events: [] }; try { return JSON.parse(localStorage.getItem(poolCacheKey) || '') as PoolCache; } catch { return { latest: (poolStartBlock - 1n).toString(), events: [] }; } }
-function writePoolCache(cache: PoolCache) { localStorage.setItem(poolCacheKey, JSON.stringify(cache)); }
+function writePoolCache(cache: PoolCache) { localStorage.setItem(poolCacheKey, JSON.stringify(cache, (_, value) => typeof value === 'bigint' ? value.toString() : value)); }
 async function poolEvents() {
   const cache = readPoolCache(); const latest = await client.getBlockNumber(); let start = BigInt(cache.latest) + 1n;
   for (; start <= latest; start += logQueryBlockRange) {
