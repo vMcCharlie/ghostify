@@ -51,8 +51,8 @@ export default function ShieldedPoolPage() {
   const persist = (next: ShieldedNote[]) => { setNotes(next); saveNotes(next); };
   const configured = protocolV3 && !!pool && !!depositWasmUrl && !!depositZkeyUrl && !!withdrawWasmUrl && !!withdrawZkeyUrl;
 
-  async function connect() { if (!window.ethereum) return setStatus('Install or unlock a wallet such as MetaMask.'); try { const wc = createWalletClient({ chain: monadTestnet, transport: custom(window.ethereum) }); const [account] = await wc.requestAddresses(); if (await wc.getChainId() !== monadTestnet.id) throw new Error('Switch to Monad Testnet (chain 10143).'); setWallet(account); setStatus('Wallet connected.'); } catch (error) { setStatus(displayError(error)); } }
-  function disconnect() { setWallet(''); setStatus('Disconnected from Ghostify. MetaMask remains connected until you revoke it in the wallet.'); }
+  async function connect() { if (!window.ethereum) return setStatus('Install or unlock a wallet such as MetaMask.'); try { const wc = createWalletClient({ chain: monadTestnet, transport: custom(window.ethereum) }); const [account] = await wc.requestAddresses(); if (await wc.getChainId() !== monadTestnet.id) throw new Error('Switch to Monad Testnet (chain 10143).'); setWallet(account); setStatus(''); } catch (error) { setStatus(displayError(error)); } }
+  function disconnect() { setWallet(''); setStatus(''); }
   async function poolLeaves() { const events = await poolEvents(); return events.map(log => ({ commitment: log.eventName === 'Deposit' ? log.args.commitment : log.args.newCommitment, block: log.blockNumber, index: log.logIndex })).sort((a, b) => a.block === b.block ? Number(a.index - b.index) : a.block < b.block ? -1 : 1).map(item => item.commitment); }
   function selectedNote() { return notes.find(note => !note.spent); }
 
