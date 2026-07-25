@@ -10,6 +10,8 @@ const zkeyUrl = process.env.NEXT_PUBLIC_ZK_ZKEY_URL;
 const withdrawWasmUrl = process.env.NEXT_PUBLIC_WITHDRAW_ZK_WASM_URL;
 const withdrawZkeyUrl = process.env.NEXT_PUBLIC_WITHDRAW_ZK_ZKEY_URL;
 const poolStartBlock = BigInt(process.env.NEXT_PUBLIC_SHIELDED_POOL_START_BLOCK || '48041968');
+// Alchemy's Monad Testnet free tier caps eth_getLogs at 10 blocks per call.
+const logQueryBlockRange = BigInt(process.env.NEXT_PUBLIC_LOG_QUERY_BLOCK_RANGE || '10');
 // The public Monad RPC limits log-query throughput. We make one request at a
 // time and retry only a transient rate-limit response.
 const client = createPublicClient({ chain: monadTestnet, transport: http(undefined, { retryCount: 0 }) });
@@ -20,8 +22,8 @@ const displayError = (error: unknown) => isRateLimit(error) ? 'Monad RPC is busy
 async function eventLogs(eventName: 'Deposit' | 'PrivateTransfer') {
   const logs: any[] = [];
   const latest = await client.getBlockNumber();
-  for (let start = poolStartBlock; start <= latest; start += 100n) {
-    const end = start + 99n > latest ? latest : start + 99n;
+  for (let start = poolStartBlock; start <= latest; start += logQueryBlockRange) {
+    const end = start + logQueryBlockRange - 1n > latest ? latest : start + logQueryBlockRange - 1n;
     for (let attempt = 0; ; attempt += 1) {
       try {
         logs.push(...await client.getContractEvents({ address: pool!, abi: SHIELDED_POOL_ABI, eventName, fromBlock: start, toBlock: end } as any));

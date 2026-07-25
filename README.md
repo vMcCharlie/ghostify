@@ -37,6 +37,7 @@ npm run dev
 ```text
 NEXT_PUBLIC_SHIELDED_POOL_ADDRESS=0xad16d1a439a239adaa202d47ae1ae9661c656112
 NEXT_PUBLIC_SHIELDED_POOL_START_BLOCK=48041968
+NEXT_PUBLIC_LOG_QUERY_BLOCK_RANGE=10
 NEXT_PUBLIC_ZK_WASM_URL=/zk/shielded_spend.wasm
 NEXT_PUBLIC_ZK_ZKEY_URL=/zk/shielded_spend_final.zkey
 NEXT_PUBLIC_WITHDRAW_ZK_WASM_URL=/zk/shielded_withdraw.wasm
@@ -45,7 +46,7 @@ NEXT_PUBLIC_MONAD_RPC_URL=<a browser-safe Monad RPC URL>
 RELAYER_PRIVATE_KEY=<server-only testnet relayer key>
 ```
 
-Use a reliable browser-safe RPC provider for `NEXT_PUBLIC_MONAD_RPC_URL` in production; it is intentionally visible to the browser, so do not use a secret or privileged credential. Never prefix `RELAYER_PRIVATE_KEY` with `NEXT_PUBLIC_`.
+For Alchemy Monad Testnet free tier, set `NEXT_PUBLIC_LOG_QUERY_BLOCK_RANGE=10`; use a reliable browser-safe RPC provider for `NEXT_PUBLIC_MONAD_RPC_URL` in production; it is intentionally visible to the browser, so do not use a secret or privileged credential. Never prefix `RELAYER_PRIVATE_KEY` with `NEXT_PUBLIC_`.
 
 ## ZK artifacts
 
@@ -71,7 +72,7 @@ The matching circuits are `circuits/shielded_spend.circom` and `circuits/shielde
 
 1. Push this revision and wait for the **Build shielded-pool test artifacts** GitHub Action to pass. Download its `ghostify-zk-testnet-artifacts` artifact.
 2. Copy `ShieldedWithdrawVerifier.sol` from the artifact into `contracts/src/`. Copy `shielded_withdraw_js/shielded_withdraw.wasm` and `shielded_withdraw_final.zkey` into `public/zk/`.
-3. Verify the withdrawal proof with the artifact's exported verification key before deployment. This repository's CI does this as a required check, but it is still a test ceremonyÃ¢â‚¬â€not production setup.
+3. Verify the withdrawal proof with the artifact's exported verification key before deployment. This repository's CI does this as a required check, but it is still a test ceremonyÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Ânot production setup.
 4. With a disposable funded testnet deployer, run `MONAD_RPC_URL=<rpc> PRIVATE_KEY=<key> node scripts/deploy-shielded-pool.mjs`. Record the new pool, both verifier, and MiMC addresses printed by the script.
 5. In Vercel, replace `NEXT_PUBLIC_SHIELDED_POOL_ADDRESS` and `NEXT_PUBLIC_SHIELDED_POOL_START_BLOCK` with the V2 values, then set both `NEXT_PUBLIC_WITHDRAW_ZK_*` variables shown above. Keep `RELAYER_PRIVATE_KEY` server-only and fund it with testnet MON for gas.
 6. Redeploy Vercel. Test with a new 1 MON V2 deposit only: transfer to a second browser profile, scan, withdraw to a third testnet wallet, and verify the pool balance decreases by exactly 1 MON.
