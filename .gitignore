@@ -5,6 +5,6 @@ node_modules
 out
 cache
 broadcast
-lib
+/contracts/lib/
 *.key
 tsconfig.tsbuildinfo
