@@ -6,9 +6,9 @@ Ghostify is a focused, non-custodial stealth-address payment prototype for **Mon
 
 ## What is included
 
-- `/` — responsive sender screen for private MON transfers
-- `/receive` — generate keys, share a meta-address, and scan on-chain announcements
-- `contracts/src/Announcer.sol` — minimal announcement registry (never custody funds)
+- `/` ï¿½ responsive sender screen for private MON transfers
+- `/receive` ï¿½ generate keys, share a meta-address, and scan on-chain announcements
+- `contracts/src/Announcer.sol` ï¿½ minimal announcement registry (never custody funds)
 - Foundry test and deployment instructions
 
 ## Protocol flow
@@ -105,3 +105,9 @@ lib/stealth.ts       Browser-side secp256k1 stealth derivation
 lib/chain.ts         Monad configuration and Announcer ABI
 contracts/           Foundry contract and unit test
 ```
+
+## Current Monad Testnet deployment
+
+Ghostify's `Announcer` contract is deployed at [`0x9ead9975dfa9dd5e54e86ce20f14de132f49fdea`](https://testnet.monadvision.com/address/0x9ead9975dfa9dd5e54e86ce20f14de132f49fdea). Set this as `NEXT_PUBLIC_ANNOUNCER_ADDRESS` to use the shared testnet registry.
+
+Deployment transaction: [`0xe7b924a89c816de88e9175bda32c70fa0588dfffcd0974e0d4434f8613ebdfe0`](https://testnet.monadvision.com/tx/0xe7b924a89c816de88e9175bda32c70fa0588dfffcd0974e0d4434f8613ebdfe0).
