@@ -15,7 +15,7 @@ export function createKeys() {
 export function formatMetaAddress(meta: MetaAddress) { return `st:monad:${meta.spendingPublicKey}:${meta.viewingPublicKey}`; }
 export function parseMetaAddress(value: string): MetaAddress | null {
   const parts = value.trim().split(':');
-  if (parts.length !== 5 || parts[0] !== 'st' || parts[1] !== 'monad' || !/^0x04[0-9a-fA-F]{128}$/.test(parts[2]) || !/^0x04[0-9a-fA-F]{128}$/.test(parts[3])) return null;
+  if (parts.length !== 4 || parts[0] !== 'st' || parts[1] !== 'monad' || !/^0x04[0-9a-fA-F]{128}$/.test(parts[2]) || !/^0x04[0-9a-fA-F]{128}$/.test(parts[3])) return null;
   return { spendingPublicKey: parts[2], viewingPublicKey: parts[3] };
 }
 export function makeStealthPayment(meta: MetaAddress) {
