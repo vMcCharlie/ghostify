@@ -1,7 +1,7 @@
 import * as secp from '@noble/secp256k1';
 import { bytesToHex, hexToBytes, toHex } from 'viem';
 
-export type ShieldedNote = { secret: string; nullifier: string; amount: string; commitment: `0x${string}`; createdAt: number; spent?: boolean };
+export type ShieldedNote = { secret: string; nullifier: string; amount: string; commitment: `0x${string}`; createdAt: number; spent?: boolean; pool?: `0x${string}` };
 export type ReceiveProfile = { privateKey: `0x${string}`; publicKey: `0x${string}` };
 const FIELD_SIZE = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 const NOTE_STORE = 'ghostify-shielded-notes'; const PROFILE_STORE = 'ghostify-shielded-profile';
