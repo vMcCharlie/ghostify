@@ -1,0 +1,10 @@
+node_modules
+.next
+.env.local
+.env
+out
+cache
+broadcast
+lib
+*.key
+tsconfig.tsbuildinfo
