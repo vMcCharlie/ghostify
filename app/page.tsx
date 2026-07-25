@@ -1,14 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createPublicClient, createWalletClient, custom, decodeEventLog, formatEther, getAddress, http, isAddress, parseEther, toHex } from 'viem';
-import { monadTestnet, RECEIVE_KEY_REGISTRY_ABI, SHIELDED_POOL_ABI } from '@/lib/chain';
-import { createShieldedNote, decryptNote, encryptNote, getOrCreateProfile, hash2, loadNotes, merklePath, saveNotes, type ReceiveProfile, type ShieldedNote } from '@/lib/shielded';
+import { monadTestnet, SHIELDED_POOL_ABI } from '@/lib/chain';
+import { createShieldedNote, hash2, loadNotes, merklePath, saveNotes, type ShieldedNote } from '@/lib/shielded';
 
 const pool = process.env.NEXT_PUBLIC_SHIELDED_POOL_ADDRESS as `0x${string}` | undefined;
-const registry = process.env.NEXT_PUBLIC_RECEIVE_KEY_REGISTRY_ADDRESS as `0x${string}` | undefined;
 const protocolV3 = process.env.NEXT_PUBLIC_PROTOCOL_VERSION === 'v3';
 const depositWasmUrl = process.env.NEXT_PUBLIC_DEPOSIT_ZK_WASM_URL; const depositZkeyUrl = process.env.NEXT_PUBLIC_DEPOSIT_ZK_ZKEY_URL;
-const spendWasmUrl = process.env.NEXT_PUBLIC_ZK_WASM_URL; const spendZkeyUrl = process.env.NEXT_PUBLIC_ZK_ZKEY_URL;
 const withdrawWasmUrl = process.env.NEXT_PUBLIC_WITHDRAW_ZK_WASM_URL; const withdrawZkeyUrl = process.env.NEXT_PUBLIC_WITHDRAW_ZK_ZKEY_URL;
 const poolStartBlock = BigInt(process.env.NEXT_PUBLIC_SHIELDED_POOL_START_BLOCK || '0');
 const logQueryBlockRange = 100n;
@@ -48,74 +46,55 @@ async function poolEvents() {
 }
 
 export default function ShieldedPoolPage() {
-  const [wallet, setWallet] = useState(''); const [notes, setNotes] = useState<ShieldedNote[]>([]); const [profile, setProfile] = useState<ReceiveProfile | null>(null); const [receiver, setReceiver] = useState(''); const [amount, setAmount] = useState('1'); const [withdrawRecipient, setWithdrawRecipient] = useState(''); const [status, setStatus] = useState(''); const [busy, setBusy] = useState(false);
-  useEffect(() => { setNotes(loadNotes()); setProfile(getOrCreateProfile()); }, []);
+  const [wallet, setWallet] = useState(''); const [notes, setNotes] = useState<ShieldedNote[]>([]); const [receiver, setReceiver] = useState(''); const [amount, setAmount] = useState('1'); const [status, setStatus] = useState(''); const [busy, setBusy] = useState(false);
+  useEffect(() => { setNotes(loadNotes()); }, []);
   const persist = (next: ShieldedNote[]) => { setNotes(next); saveNotes(next); };
-  const configured = protocolV3 && !!pool && !!depositWasmUrl && !!depositZkeyUrl && !!spendWasmUrl && !!spendZkeyUrl && !!withdrawWasmUrl && !!withdrawZkeyUrl;
+  const configured = protocolV3 && !!pool && !!depositWasmUrl && !!depositZkeyUrl && !!withdrawWasmUrl && !!withdrawZkeyUrl;
 
   async function connect() { if (!window.ethereum) return setStatus('Install or unlock a wallet such as MetaMask.'); try { const wc = createWalletClient({ chain: monadTestnet, transport: custom(window.ethereum) }); const [account] = await wc.requestAddresses(); if (await wc.getChainId() !== monadTestnet.id) throw new Error('Switch to Monad Testnet (chain 10143).'); setWallet(account); setStatus('Wallet connected.'); } catch (error) { setStatus(displayError(error)); } }
   function disconnect() { setWallet(''); setStatus('Disconnected from Ghostify. MetaMask remains connected until you revoke it in the wallet.'); }
   async function poolLeaves() { const events = await poolEvents(); return events.map(log => ({ commitment: log.eventName === 'Deposit' ? log.args.commitment : log.args.newCommitment, block: log.blockNumber, index: log.logIndex })).sort((a, b) => a.block === b.block ? Number(a.index - b.index) : a.block < b.block ? -1 : 1).map(item => item.commitment); }
   function selectedNote() { return notes.find(note => !note.spent); }
 
-  async function deposit() {
-    if (!configured) return setStatus('V3 is not configured yet. Use the deployment checklist before depositing.'); if (!wallet) return setStatus('Connect your wallet first.');
-    let value: bigint; try { value = parseEther(amount); if (value <= 0n) throw new Error(); } catch { return setStatus('Enter a valid MON amount greater than zero.'); }
-    setBusy(true); try { setStatus('Creating your note and generating a deposit proof locally (usually 5-30 seconds)...'); const note = await createShieldedNote(value); const result = await fullProveWithTimeout({ commitment: BigInt(note.commitment).toString(), amount: value.toString(), secret: note.secret, nullifier: note.nullifier }, depositWasmUrl!, depositZkeyUrl!); const wc = createWalletClient({ chain: monadTestnet, transport: custom(window.ethereum!) }); setStatus('Confirm the MON deposit in your wallet...'); const hash = await wc.writeContract({ account: wallet as `0x${string}`, address: pool!, abi: SHIELDED_POOL_ABI, functionName: 'deposit', args: [...Object.values(proof(result)), note.commitment] as any, value }); await client.waitForTransactionReceipt({ hash }); persist([...notes, note]); setStatus(`Deposit confirmed. ${formatEther(value)} MON note stored locally.`); } catch (error) { setStatus(displayError(error)); } finally { setBusy(false); }
-  }
-
-  async function scan() { if (!configured || !profile) return setStatus('V3 is not configured yet.'); setBusy(true); try { setStatus('Loading recent encrypted transfer activity...'); const logs = (await poolEvents()).filter(log => log.eventName === 'PrivateTransfer'); const incoming = (await Promise.all(logs.map(log => decryptNote(log.args.encryptedNote!, profile)))).filter((note): note is ShieldedNote => note !== null); const next = [...notes]; for (const note of incoming) if (!next.some(existing => existing.commitment.toLowerCase() === note.commitment.toLowerCase())) next.push(note); persist(next); setStatus(incoming.length ? `${incoming.length} private note(s) found.` : 'No new private notes found.'); } catch (error) { setStatus(displayError(error)); } finally { setBusy(false); } }
-
-  async function enableReceiving() {
-    if (!wallet) return setStatus('Connect the wallet that should receive private payments.');
-    if (!registry || !profile) return setStatus('Receive directory is not configured.');
-    setBusy(true); try { setStatus('Confirm private receiving for this wallet...'); const wc = createWalletClient({ chain: monadTestnet, transport: custom(window.ethereum!) }); const hash = await wc.writeContract({ account: wallet as `0x${string}`, address: registry, abi: RECEIVE_KEY_REGISTRY_ABI, functionName: 'register', args: [profile.publicKey] }); await client.waitForTransactionReceipt({ hash }); setStatus('Private receiving is enabled. Friends can now use your wallet address.'); } catch (error) { setStatus(displayError(error)); } finally { setBusy(false); }
-  }
-
-  async function resolveReceiver(value: string): Promise<`0x${string}`> {
-    if (/^0x04[0-9a-fA-F]{128}$/.test(value)) return value as `0x${string}`;
-    if (!isAddress(value)) throw new Error('Enter a recipient wallet address.');
-    if (!registry) throw new Error('Receive directory is not configured.');
-    const key = await client.readContract({ address: registry, abi: RECEIVE_KEY_REGISTRY_ABI, functionName: 'keyOf', args: [getAddress(value)] });
-    if (!/^0x04[0-9a-fA-F]{128}$/.test(key)) throw new Error('This wallet has not enabled private receiving yet.');
-    return key as `0x${string}`;
-  }
-  async function privateSend() { if (!configured) return setStatus('V3 is not configured yet.'); if (!receiver.trim()) return setStatus('Enter a recipient wallet address.'); const note = selectedNote(); if (!note) return setStatus('Add money to your private balance first.'); let requested: bigint; try { requested = parseEther(amount); } catch { return setStatus('Enter a valid MON amount.'); } if (requested !== BigInt(note.amount)) return setStatus('This prototype sends one complete note. Enter the exact available balance.'); setBusy(true); try { setStatus('Loading pool activity and constructing your private path...'); const path = await merklePath(await poolLeaves(), note.commitment); setStatus('Building a private transfer proof locally (usually 5-30 seconds)...'); const receiverKey = await resolveReceiver(receiver.trim()); const recipient = await createShieldedNote(note.amount); const nullifierHash = await hash2(note.nullifier, 1n); const encryptedNote = await encryptNote(recipient, receiverKey); const result = await fullProveWithTimeout({ root: path.root.toString(), nullifierHash: nullifierHash.toString(), newCommitment: BigInt(recipient.commitment).toString(), secret: note.secret, nullifier: note.nullifier, amount: note.amount, recipientSecret: recipient.secret, recipientNullifier: recipient.nullifier, pathElements: path.pathElements, pathIndices: path.pathIndices }, spendWasmUrl!, spendZkeyUrl!); const response = await fetch('/api/relay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...proof(result), root: toHex(path.root, { size: 32 }), nullifierHash: toHex(nullifierHash, { size: 32 }), newCommitment: recipient.commitment, encryptedNote }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Relayer rejected the proof.'); await client.waitForTransactionReceipt({ hash: data.hash }); persist(notes.map(item => item.commitment === note.commitment ? { ...item, spent: true } : item)); setStatus(`Private transfer complete. ${formatEther(BigInt(note.amount))} MON moved as a hidden note.`); } catch (error) { setStatus(displayError(error)); } finally { setBusy(false); } }
-
-  async function withdraw() { if (!configured) return setStatus('V3 is not configured yet.'); if (!wallet) return setStatus('Connect the wallet you want to withdraw to.'); const note = selectedNote(); if (!note) return setStatus('Add money to your private balance first.'); setBusy(true); try { setStatus('Loading pool activity and constructing your private path...'); const path = await merklePath(await poolLeaves(), note.commitment); setStatus('Building a withdrawal proof locally (usually 5-30 seconds)...'); const recipient = getAddress(wallet); const nullifierHash = await hash2(note.nullifier, 1n); const recipientHash = await hash2(BigInt(recipient), 0n); const result = await fullProveWithTimeout({ root: path.root.toString(), nullifierHash: nullifierHash.toString(), withdrawalRecipientHash: recipientHash.toString(), amount: note.amount, secret: note.secret, nullifier: note.nullifier, withdrawalRecipient: BigInt(recipient).toString(), pathElements: path.pathElements, pathIndices: path.pathIndices }, withdrawWasmUrl!, withdrawZkeyUrl!); const response = await fetch('/api/relay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'withdraw', ...proof(result), root: toHex(path.root, { size: 32 }), nullifierHash: toHex(nullifierHash, { size: 32 }), recipient, amount: note.amount }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Relayer rejected the withdrawal.'); await client.waitForTransactionReceipt({ hash: data.hash }); persist(notes.map(item => item.commitment === note.commitment ? { ...item, spent: true } : item)); setStatus(`Withdrawal complete. ${formatEther(BigInt(note.amount))} MON was sent to ${recipient.slice(0, 6)}...${recipient.slice(-4)}.`); } catch (error) { setStatus(displayError(error)); } finally { setBusy(false); } }
-
   async function sendNow() {
     if (!configured) return setStatus('Ghostify is still being configured.');
     if (!wallet) return setStatus('Connect your wallet first.');
-    if (!receiver.trim()) return setStatus('Enter the recipient wallet address.');
+    if (!isAddress(receiver.trim())) return setStatus('Enter a valid recipient wallet address.');
     let value: bigint; try { value = parseEther(amount); if (value <= 0n) throw new Error(); } catch { return setStatus('Enter a valid MON amount.'); }
-    if (selectedNote()) return setStatus('Finish sending or withdrawing your existing private balance first.');
+    const recipient = getAddress(receiver.trim());
+    const existing = selectedNote();
+    if (existing && BigInt(existing.amount) !== value) return setStatus(`A ${formatEther(BigInt(existing.amount))} MON payment is pending. Enter that amount to finish it.`);
     setBusy(true);
     try {
-      setStatus('Checking the recipient can receive privately...');
-      const receiverKey = await resolveReceiver(receiver.trim());
-      setStatus('Preparing your private payment...');
-      const note = await createShieldedNote(value);
-      const depositProof = await fullProveWithTimeout({ commitment: BigInt(note.commitment).toString(), amount: value.toString(), secret: note.secret, nullifier: note.nullifier }, depositWasmUrl!, depositZkeyUrl!);
-      const wc = createWalletClient({ chain: monadTestnet, transport: custom(window.ethereum!) });
-      setStatus('Confirm the deposit in your wallet...');
-      const depositHash = await wc.writeContract({ account: wallet as `0x${string}`, address: pool!, abi: SHIELDED_POOL_ABI, functionName: 'deposit', args: [...Object.values(proof(depositProof)), note.commitment] as any, value });
-      await client.waitForTransactionReceipt({ hash: depositHash });
-      const afterDeposit = [...notes, note];
-      persist(afterDeposit);
-      setStatus('Routing your payment privately...');
+      let storedNotes = notes;
+      let note = existing;
+      if (!note) {
+        setStatus('Preparing your private payment...');
+        note = await createShieldedNote(value);
+        const depositProof = await fullProveWithTimeout({ commitment: BigInt(note.commitment).toString(), amount: value.toString(), secret: note.secret, nullifier: note.nullifier }, depositWasmUrl!, depositZkeyUrl!);
+        const wc = createWalletClient({ chain: monadTestnet, transport: custom(window.ethereum!) });
+        setStatus('Confirm the deposit in your wallet...');
+        const depositHash = await wc.writeContract({ account: wallet as `0x${string}`, address: pool!, abi: SHIELDED_POOL_ABI, functionName: 'deposit', args: [...Object.values(proof(depositProof)), note.commitment] as any, value });
+        await client.waitForTransactionReceipt({ hash: depositHash });
+        storedNotes = [...notes, note];
+        persist(storedNotes);
+      }
+      setStatus('Creating your private withdrawal route...');
       const path = await merklePath(await poolLeaves(), note.commitment);
-      const recipient = await createShieldedNote(note.amount);
+      const delay = 1_000 + Math.floor(Math.random() * 2_001);
+      setStatus(`Finalizing private route in ${Math.ceil(delay / 1000)} seconds. Keep this tab open.`);
+      await pause(delay);
+      setStatus('Building the private withdrawal proof locally...');
       const nullifierHash = await hash2(note.nullifier, 1n);
-      const encryptedNote = await encryptNote(recipient, receiverKey);
-      const transferProof = await fullProveWithTimeout({ root: path.root.toString(), nullifierHash: nullifierHash.toString(), newCommitment: BigInt(recipient.commitment).toString(), secret: note.secret, nullifier: note.nullifier, amount: note.amount, recipientSecret: recipient.secret, recipientNullifier: recipient.nullifier, pathElements: path.pathElements, pathIndices: path.pathIndices }, spendWasmUrl!, spendZkeyUrl!);
-      const response = await fetch('/api/relay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...proof(transferProof), root: toHex(path.root, { size: 32 }), nullifierHash: toHex(nullifierHash, { size: 32 }), newCommitment: recipient.commitment, encryptedNote }) });
+      const recipientHash = await hash2(BigInt(recipient), 0n);
+      const withdrawalProof = await fullProveWithTimeout({ root: path.root.toString(), nullifierHash: nullifierHash.toString(), withdrawalRecipientHash: recipientHash.toString(), amount: note.amount, secret: note.secret, nullifier: note.nullifier, withdrawalRecipient: BigInt(recipient).toString(), pathElements: path.pathElements, pathIndices: path.pathIndices }, withdrawWasmUrl!, withdrawZkeyUrl!);
+      const response = await fetch('/api/relay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'withdraw', ...proof(withdrawalProof), root: toHex(path.root, { size: 32 }), nullifierHash: toHex(nullifierHash, { size: 32 }), recipient, amount: note.amount }) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Relayer rejected the payment.');
       await client.waitForTransactionReceipt({ hash: data.hash });
-      persist(afterDeposit.map(item => item.commitment === note.commitment ? { ...item, spent: true } : item));
-      setStatus('Payment sent privately.');
+      persist(storedNotes.map(item => item.commitment === note!.commitment ? { ...item, spent: true } : item));
+      setStatus(`Payment completed. ${formatEther(BigInt(note.amount))} MON was delivered to ${recipient.slice(0, 6)}...${recipient.slice(-4)}.`);
     } catch (error) { setStatus(displayError(error)); } finally { setBusy(false); }
   }
   const balance = notes.filter(note => !note.spent).reduce((total, note) => total + BigInt(note.amount), 0n);
-  return <main className="consumer-shell"><header className="consumer-nav"><a href="#top" className="brand"><img src="/ghostify.png" alt="Ghostify" />Ghostify</a><nav aria-label="Ghostify navigation"><a href="#top">Home</a><a className="active-link" href="#send">Private send</a><a href="#how-it-works">How it works</a></nav><div className="nav-actions"><button className="button button-quiet" onClick={wallet ? disconnect : connect}>{wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Connect wallet'}</button></div></header><section id="top" className="hero"><p className="eyebrow">PRIVATE PAYMENTS ON MONAD</p><h1>Privacy for your MON.</h1><p className="hero-copy">Send to a normal Monad wallet address. Ghostify handles the private route in the background.</p></section><nav className="flow-tabs" aria-label="Payment flow"><span>Shield</span><span className="active">Private send</span><span>Withdraw</span></nav>{!configured && <p className="notice">Ghostify is still being configured. Please try again after deployment.</p>}<section id="send" className="single-flow"><div className="payment-heading"><div><p className="step-label">PRIVATE SEND</p><h2>You&apos;re sending</h2></div><span className="mon-chip">MON <b>⌄</b></span></div><div className="amount-row"><input className="amount-input" aria-label="Amount in MON" inputMode="decimal" placeholder="0.00" value={amount} onChange={event => setAmount(event.target.value)} /><span>MON</span></div><label className="recipient-label">Send to<input className="consumer-field" placeholder="Recipient wallet address (0x...)" value={receiver} onChange={event => setReceiver(event.target.value)} /></label><div className="fee-row"><span>Network fee</span><b>Sponsored · 0 MON</b></div><button className="button button-main" disabled={busy || !configured || !wallet} onClick={sendNow}>{busy ? 'Processing payment...' : wallet ? 'Send privately' : 'Connect wallet to send'}</button><p className="fine-print">The recipient must have enabled private receiving once. Testnet only.</p></section>{status && <p role="status" className="status-banner">{status}</p>}<section id="how-it-works" className="how compact-how"><div><span>01</span><h3>Enter an address</h3><p>Use their normal Monad wallet address.</p></div><div><span>02</span><h3>Confirm once</h3><p>Approve your MON deposit from your wallet.</p></div><div><span>03</span><h3>Private route</h3><p>Ghostify relays the private payment.</p></div></section><footer>Ghostify · Monad Testnet · Testnet funds only</footer></main>;
+  return <main className="consumer-shell"><header className="consumer-nav"><a href="#top" className="brand"><img src="/ghostify.png" alt="Ghostify" />Ghostify</a><nav aria-label="Ghostify navigation"><a href="#top">Home</a><a className="active-link" href="#send">Private send</a><a href="#how-it-works">How it works</a></nav><div className="nav-actions"><button className="button button-quiet" onClick={wallet ? disconnect : connect}>{wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Connect wallet'}</button></div></header><section id="top" className="hero"><p className="eyebrow">PRIVATE PAYMENTS ON MONAD</p><h1>Privacy for your MON.</h1><p className="hero-copy">Send to a normal Monad wallet address. Ghostify routes your payment through the pool, then delivers it to their wallet.</p></section><nav className="flow-tabs" aria-label="Payment flow"><span>Shield</span><span className="active">Private send</span><span>Withdraw</span></nav>{!configured && <p className="notice">Ghostify is still being configured. Please try again after deployment.</p>}<section id="send" className="single-flow"><div className="payment-heading"><div><p className="step-label">PRIVATE SEND</p><h2>You&apos;re sending</h2></div><span className="mon-chip">MON <b>v</b></span></div><div className="amount-row"><input className="amount-input" aria-label="Amount in MON" inputMode="decimal" placeholder="0.00" value={amount} onChange={event => setAmount(event.target.value)} /><span>MON</span></div><label className="recipient-label">Send to<input className="consumer-field" placeholder="Recipient wallet address (0x...)" value={receiver} onChange={event => setReceiver(event.target.value)} /></label><div className="fee-row"><span>Network fee</span><b>Sponsored - 0 MON</b></div><button className="button button-main" disabled={busy || !configured || !wallet} onClick={sendNow}>{busy ? 'Processing payment...' : wallet ? 'Send privately' : 'Connect wallet to send'}</button><p className="fine-print">Testnet prototype. The recipient wallet and amount are public at withdrawal.</p></section>{status && <p role="status" className="status-banner">{status}</p>}<section id="how-it-works" className="how compact-how"><div><span>01</span><h3>Enter an address</h3><p>Use their normal Monad wallet address.</p></div><div><span>02</span><h3>Confirm once</h3><p>Approve your MON deposit from your wallet.</p></div><div><span>03</span><h3>Private route</h3><p>Ghostify relays the private payment.</p></div></section><footer>Ghostify - Monad Testnet - Testnet funds only</footer></main>;
 }
