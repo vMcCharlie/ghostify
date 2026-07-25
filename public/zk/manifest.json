@@ -1,13 +1,38 @@
 {
-    "circuit":  "shielded_spend",
-    "wasm":  {
-                 "sha256":  "352e1a71a750d042c0b39827203ec2e906de0df1448fa3b898d32937b7681641",
-                 "file":  "shielded_spend.wasm"
-             },
-    "version":  "testnet-v1",
-    "zkey":  {
-                 "sha256":  "0e96f5382b37006a01ea1c8998fdbf71eb6888fa4ea817424b2fc3ca1ec001c6",
-                 "file":  "shielded_spend_final.zkey"
-             },
-    "verifierSource":  "ShieldedSpendVerifier.sol"
+    "version":  "testnet-v3",
+    "circuits":  {
+                     "deposit":  {
+                                     "wasm":  {
+                                                  "file":  "shielded_deposit.wasm",
+                                                  "sha256":  "dee3ec5cea51a2958122f3aa7caaff865fe6cc547b0ce29217969d985b3712b1"
+                                              },
+                                     "zkey":  {
+                                                  "file":  "shielded_deposit_final.zkey",
+                                                  "sha256":  "88589ea4d99b930dd05f66ab3e2615e622196f59bd60bc5cb78499d1ef7b499f"
+                                              },
+                                     "verifierSource":  "ShieldedDepositVerifier.sol"
+                                 },
+                     "spend":  {
+                                   "wasm":  {
+                                                "file":  "shielded_spend.wasm",
+                                                "sha256":  "45f57f0cf90427baf7d3833b18a183b9ea56d5a172dc3f5f7a7b66dad1813e26"
+                                            },
+                                   "zkey":  {
+                                                "file":  "shielded_spend_final.zkey",
+                                                "sha256":  "f9bdd4af93121c4b41b6a996527743c8b36c5d186dbf8821bbdb964432694a1d"
+                                            },
+                                   "verifierSource":  "ShieldedSpendVerifier.sol"
+                               },
+                     "withdraw":  {
+                                      "wasm":  {
+                                                   "file":  "shielded_withdraw.wasm",
+                                                   "sha256":  "0064dc576aada64c6055f5eacbb9c6650378ed453f1569b252c5c0627beda4c0"
+                                               },
+                                      "zkey":  {
+                                                   "file":  "shielded_withdraw_final.zkey",
+                                                   "sha256":  "88255d53cfae11fab48a696b541dd33aedf5c3cf51f0c8aa14ca200306a83b6f"
+                                               },
+                                      "verifierSource":  "ShieldedWithdrawVerifier.sol"
+                                  }
+                 }
 }

@@ -18,3 +18,5 @@ circuits/test_*.json
 circuits/verification_key.json
 
 ghostify-zk-testnet-artifacts/
+
+ghostify-zk-v3-testnet-artifacts/
