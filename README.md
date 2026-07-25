@@ -145,3 +145,13 @@ The current testnet verifier and browser artifacts are pinned in `public/zk/` an
 - Proving key SHA-256: `0e96f5382b37006a01ea1c8998fdbf71eb6888fa4ea817424b2fc3ca1ec001c6`
 
 The generated verifier source at `contracts/src/ShieldedSpendVerifier.sol` matches this artifact set. These parameters are testnet-only and must be replaced by an independently contributed ceremony before any production deployment.
+
+## Live Monad Testnet shielded-pool deployment
+
+The verified testnet artifact set is deployed at:
+
+- Groth16 verifier: [`0x6fe4efe0e63620251cdd5c50a123db8e8ead3ebf`](https://testnet.monadvision.com/address/0x6fe4efe0e63620251cdd5c50a123db8e8ead3ebf)
+- MiMC7 hash contract: [`0x5cb7b35d0ff4ce325e68f4db4abb6cbca48aae7f`](https://testnet.monadvision.com/address/0x5cb7b35d0ff4ce325e68f4db4abb6cbca48aae7f)
+- 1 MON ShieldedPool: [`0xad16d1a439a239adaa202d47ae1ae9661c656112`](https://testnet.monadvision.com/address/0xad16d1a439a239adaa202d47ae1ae9661c656112)
+
+The pool bytecode and its `DENOMINATION()` value (`1 MON`) were verified through Monad Testnet RPC. This is a testnet-only, single-contribution ceremony deployment.

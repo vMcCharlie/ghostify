@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import solc from 'solc';
 import { createPublicClient, createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { createCode } from 'circomlibjs/src/mimc7_gencontract.js';
+import { mimc7Contract } from 'circomlibjs';
 
 const rpcUrl = process.env.MONAD_RPC_URL || 'https://testnet-rpc.monad.xyz';
 const privateKey = process.env.PRIVATE_KEY;
@@ -27,6 +27,6 @@ async function deploy(artifact, args = []) {
 }
 
 const verifier = await deploy(compile('contracts/src/ShieldedSpendVerifier.sol', 'Groth16Verifier'));
-const mimc = await deploy({ abi: [{ type: 'function', name: 'MiMCpe7', stateMutability: 'pure', inputs: [{ type: 'uint256', name: 'in_x' }, { type: 'uint256', name: 'in_k' }], outputs: [{ type: 'uint256', name: 'out_x' }] }], bytecode: createCode('mimc', 91) });
+const mimc = await deploy({ abi: [{ type: 'function', name: 'MiMCpe7', stateMutability: 'pure', inputs: [{ type: 'uint256', name: 'in_x' }, { type: 'uint256', name: 'in_k' }], outputs: [{ type: 'uint256', name: 'out_x' }] }], bytecode: mimc7Contract.createCode('mimc', 91) });
 const pool = await deploy(compile('contracts/src/ShieldedPool.sol', 'ShieldedPool'), [mimc, verifier]);
 console.log(JSON.stringify({ verifier, mimc, pool }, null, 2));
