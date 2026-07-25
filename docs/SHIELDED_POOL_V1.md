@@ -38,3 +38,14 @@ Then generate a deposit note locally (`secret`, `nullifier`), calculate its MiMC
 - A much larger tree/anonymity set, root-history policy, anti-DoS/rate limiting, and private transport.
 - A withdrawal circuit with explicit recipient/linkability warnings and a relayer network.
 - Security review before any funds beyond disposable test MON.
+
+### Deploy the test stack
+
+After the native ceremony exports `contracts/src/ShieldedSpendVerifier.sol`, set a disposable testnet key and run:
+
+```powershell
+$env:PRIVATE_KEY='0xyour_testnet_key'
+node scripts/deploy-shielded-pool.mjs
+```
+
+The script deploys the generated Groth16 verifier, the matching MiMC7 hash contract, and `ShieldedPool` in order. It prints all three addresses. Never reuse this local test ceremony or its verifier for a production deployment.
