@@ -46,7 +46,7 @@ async function poolEvents() {
 }
 
 export default function ShieldedPoolPage() {
-  const [wallet, setWallet] = useState(''); const [notes, setNotes] = useState<ShieldedNote[]>([]); const [receiver, setReceiver] = useState(''); const [amount, setAmount] = useState('1'); const [status, setStatus] = useState(''); const [busy, setBusy] = useState(false);
+  const [wallet, setWallet] = useState(''); const [notes, setNotes] = useState<ShieldedNote[]>([]); const [receiver, setReceiver] = useState(''); const [amount, setAmount] = useState('1'); const [status, setStatus] = useState(''); const [busy, setBusy] = useState(false); const [buttonLabel, setButtonLabel] = useState('Send privately'); const [success, setSuccess] = useState<{ amount: string; recipient: string } | null>(null);
   useEffect(() => { setNotes(loadNotes()); }, []);
   const persist = (next: ShieldedNote[]) => { setNotes(next); saveNotes(next); };
   const configured = protocolV3 && !!pool && !!depositWasmUrl && !!depositZkeyUrl && !!withdrawWasmUrl && !!withdrawZkeyUrl;
@@ -64,27 +64,33 @@ export default function ShieldedPoolPage() {
     const recipient = getAddress(receiver.trim());
     const existing = selectedNote();
     if (existing && BigInt(existing.amount) !== value) return setStatus(`A ${formatEther(BigInt(existing.amount))} MON payment is pending. Enter that amount to finish it.`);
+    setSuccess(null);
+    setButtonLabel('Checking recipient...');
     setBusy(true);
     try {
       let storedNotes = notes;
       let note = existing;
       if (!note) {
-        setStatus('Preparing your private payment...');
+        setButtonLabel('Preparing payment...');
+        setStatus('Preparing your payment...');
         note = await createShieldedNote(value);
         const depositProof = await fullProveWithTimeout({ commitment: BigInt(note.commitment).toString(), amount: value.toString(), secret: note.secret, nullifier: note.nullifier }, depositWasmUrl!, depositZkeyUrl!);
         const wc = createWalletClient({ chain: monadTestnet, transport: custom(window.ethereum!) });
-        setStatus('Confirm the deposit in your wallet...');
+        setButtonLabel('Confirm in wallet...');
+        setStatus('Confirm the payment in your wallet.');
         const depositHash = await wc.writeContract({ account: wallet as `0x${string}`, address: pool!, abi: SHIELDED_POOL_ABI, functionName: 'deposit', args: [...Object.values(proof(depositProof)), note.commitment] as any, value });
         await client.waitForTransactionReceipt({ hash: depositHash });
         storedNotes = [...notes, note];
         persist(storedNotes);
       }
-      setStatus('Creating your private withdrawal route...');
+      setButtonLabel('Securing payment...');
+      setStatus('Securing your payment...');
       const path = await merklePath(await poolLeaves(), note.commitment);
       const delay = 1_000 + Math.floor(Math.random() * 2_001);
-      setStatus(`Finalizing private route in ${Math.ceil(delay / 1000)} seconds. Keep this tab open.`);
+      setStatus(`Sending securely in ${Math.ceil(delay / 1000)} seconds. Keep this tab open.`);
       await pause(delay);
-      setStatus('Building the private withdrawal proof locally...');
+      setButtonLabel('Finalizing payment...');
+      setStatus('Finalizing your payment...');
       const nullifierHash = await hash2(note.nullifier, 1n);
       const recipientHash = await hash2(BigInt(recipient), 0n);
       const withdrawalProof = await fullProveWithTimeout({ root: path.root.toString(), nullifierHash: nullifierHash.toString(), withdrawalRecipientHash: recipientHash.toString(), amount: note.amount, secret: note.secret, nullifier: note.nullifier, withdrawalRecipient: BigInt(recipient).toString(), pathElements: path.pathElements, pathIndices: path.pathIndices }, withdrawWasmUrl!, withdrawZkeyUrl!);
@@ -92,9 +98,11 @@ export default function ShieldedPoolPage() {
       const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Relayer rejected the payment.');
       await client.waitForTransactionReceipt({ hash: data.hash });
       persist(storedNotes.map(item => item.commitment === note!.commitment ? { ...item, spent: true } : item));
-      setStatus(`Payment completed. ${formatEther(BigInt(note.amount))} MON was delivered to ${recipient.slice(0, 6)}...${recipient.slice(-4)}.`);
-    } catch (error) { setStatus(displayError(error)); } finally { setBusy(false); }
+      setButtonLabel('Payment sent');
+      setSuccess({ amount: formatEther(BigInt(note.amount)), recipient });
+      setStatus('');
+    } catch (error) { setButtonLabel('Try again'); setStatus(displayError(error)); } finally { setBusy(false); }
   }
   const balance = notes.filter(note => !note.spent).reduce((total, note) => total + BigInt(note.amount), 0n);
-  return <main className="consumer-shell"><header className="consumer-nav"><a href="#top" className="brand"><img src="/ghostify.png" alt="Ghostify" />Ghostify</a><nav aria-label="Ghostify navigation"><a href="#top">Home</a><a className="active-link" href="#send">Private send</a><a href="#how-it-works">How it works</a></nav><div className="nav-actions"><button className="button button-quiet" onClick={wallet ? disconnect : connect}>{wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Connect wallet'}</button></div></header><section id="top" className="hero"><p className="eyebrow">PRIVATE PAYMENTS ON MONAD</p><h1>Privacy for your MON.</h1><p className="hero-copy">Send to a normal Monad wallet address. Ghostify routes your payment through the pool, then delivers it to their wallet.</p></section><nav className="flow-tabs" aria-label="Payment flow"><span>Shield</span><span className="active">Private send</span><span>Withdraw</span></nav>{!configured && <p className="notice">Ghostify is still being configured. Please try again after deployment.</p>}<section id="send" className="single-flow"><div className="payment-heading"><div><p className="step-label">PRIVATE SEND</p><h2>You&apos;re sending</h2></div><span className="mon-chip">MON <b>v</b></span></div><div className="amount-row"><input className="amount-input" aria-label="Amount in MON" inputMode="decimal" placeholder="0.00" value={amount} onChange={event => setAmount(event.target.value)} /><span>MON</span></div><label className="recipient-label">Send to<input className="consumer-field" placeholder="Recipient wallet address (0x...)" value={receiver} onChange={event => setReceiver(event.target.value)} /></label><div className="fee-row"><span>Network fee</span><b>Sponsored - 0 MON</b></div><button className="button button-main" disabled={busy || !configured || !wallet} onClick={sendNow}>{busy ? 'Processing payment...' : wallet ? 'Send privately' : 'Connect wallet to send'}</button><p className="fine-print">Testnet prototype. The recipient wallet and amount are public at withdrawal.</p></section>{status && <p role="status" className="status-banner">{status}</p>}<section id="how-it-works" className="how compact-how"><div><span>01</span><h3>Enter an address</h3><p>Use their normal Monad wallet address.</p></div><div><span>02</span><h3>Confirm once</h3><p>Approve your MON deposit from your wallet.</p></div><div><span>03</span><h3>Private route</h3><p>Ghostify relays the private payment.</p></div></section><footer>Ghostify - Monad Testnet - Testnet funds only</footer></main>;
+  return <main className="consumer-shell"><header className="consumer-nav"><a href="#top" className="brand"><img src="/ghostify.png" alt="Ghostify" />Ghostify</a><nav aria-label="Ghostify navigation"><a href="#top">Home</a><a className="active-link" href="#send">Private send</a><a href="#how-it-works">How it works</a></nav><div className="nav-actions"><button className="button button-quiet" onClick={wallet ? disconnect : connect}>{wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Connect wallet'}</button></div></header><section id="top" className="hero"><p className="eyebrow">PRIVATE PAYMENTS ON MONAD</p><h1>Incognito <img className="hero-logo" src="/ghostify.png" alt="Ghostify" /> mode<br />for your money.</h1><p className="hero-copy">Send to a normal Monad wallet address. Ghostify is the private payment layer for Monad. Send with a clean, simple flow.</p></section><nav className="flow-tabs" aria-label="Payment flow"><span>Shield</span><span className="active">Private send</span><span>Withdraw</span></nav>{!configured && <p className="notice">Ghostify is still being configured. Please try again after deployment.</p>}<section id="send" className="single-flow"><div className="payment-heading"><div><p className="step-label">PRIVATE SEND</p><h2>You&apos;re sending</h2></div><span className="mon-chip">MON <b>v</b></span></div><div className="amount-row"><input className="amount-input" aria-label="Amount in MON" inputMode="decimal" placeholder="0.00" value={amount} onChange={event => setAmount(event.target.value)} /><span>MON</span></div><label className="recipient-label">Send to<input className="consumer-field" placeholder="Recipient wallet address (0x...)" value={receiver} onChange={event => setReceiver(event.target.value)} /></label><div className="fee-row"><span>Network fee</span><b>Sponsored - 0 MON</b></div><button className={`button button-main ${success ? 'button-success' : ''}`} disabled={busy || !configured || !wallet} onClick={sendNow}>{wallet ? buttonLabel : 'Connect wallet to send'}</button><p className="fine-print">Private payments on Monad Testnet.</p></section>{status && <p role="status" className="status-banner">{status}</p>}{success && <div className="success-backdrop" role="dialog" aria-modal="true" aria-labelledby="success-title"><section className="success-modal"><div className="success-check">✓</div><p className="step-label">PAYMENT COMPLETE</p><h2 id="success-title">Sent privately</h2><p>{success.amount} MON is on its way to <b>{success.recipient.slice(0, 6)}...{success.recipient.slice(-4)}</b>.</p><button className="button button-main button-success" onClick={() => { setSuccess(null); setButtonLabel('Send privately'); }}>Done</button></section></div>}<section id="how-it-works" className="how compact-how"><div><span>01</span><h3>Enter an address</h3><p>Use their normal Monad wallet address.</p></div><div><span>02</span><h3>Confirm once</h3><p>Approve your MON deposit from your wallet.</p></div><div><span>03</span><h3>Private route</h3><p>Ghostify relays the private payment.</p></div></section><footer>Ghostify - Monad Testnet - Testnet funds only</footer></main>;
 }
