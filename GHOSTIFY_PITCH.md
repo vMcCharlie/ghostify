@@ -60,6 +60,15 @@ Digital money is becoming normal—but transparent ledgers can make private fina
 - A simple experience that does not require becoming a cryptography expert
 
 **Ghostify’s position:** privacy should be a user benefit, not a power-user feature.
+## A real-world reminder
+
+In January 2025, **David Balland**, a Ledger co-founder, and his partner were kidnapped in France; prosecutors said a cryptocurrency ransom was demanded from another Ledger co-founder.
+
+This is not a reason for fear-driven design. It is a reminder that when financial identity, balances, and relationships are easy to map, digital exposure can create physical-world risk.
+
+**Ghostify’s belief:** privacy is personal safety infrastructure.
+
+[Source: Associated Press reporting on the Ledger case](https://apnews.com/article/3bee45ffa10fa07dfe8ff4f339ec97e2)
 
 **Responsible design:** Ghostify is a testnet prototype. The path to production includes independent security review, clear user disclosures, and compliance-aware product controls.
 
@@ -150,21 +159,8 @@ adults worldwide remained without a financial account in the World Bank’s Glob
 - Consumer and developer payment surfaces
 
 **North-star metric:** successful private payments completed without a user needing to understand the underlying cryptography.
+## The ask
 
----
+Help Ghostify validate the user experience, connect with Monad ecosystem partners, and take this honest testnet prototype toward an audited, production-grade privacy layer.
 
-# Ghostify
-
-## Incognito mode for your money.
-
-A private-payment experience designed for the next generation of on-chain users.
-
-**What we are proving:**
-
-- Privacy UX can be simple
-- Monad can support a consumer-grade privacy payment primitive
-- The next payment product should feel human first, technical second
-
-**Hackathon ask:** help us validate the user experience, connect with Monad ecosystem partners, and take Ghostify from an honest testnet prototype to an audited production-grade privacy layer.
-
-**Theme close:** Ghostify violet `#8772F3` on cloud white, with a soft violet aurora and the Ghostify logo as the visual anchor.
+**Ghostify: Incognito mode for your money.**
