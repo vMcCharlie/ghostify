@@ -16,8 +16,8 @@ export async function POST(request: Request) {
     const account = privateKeyToAccount(key.startsWith('0x') ? key : `0x${key}`);
     const wallet = createWalletClient({ account, chain: monadTestnet, transport: http() });
     const args = body.action === 'withdraw'
-      ? isAddress(body.recipient as string)
-        ? [body.pA, body.pB, body.pC, body.root, body.nullifierHash, body.recipient] as const
+      ? isAddress(body.recipient as string) && typeof body.amount === 'string' && /^\d+$/.test(body.amount)
+        ? [body.pA, body.pB, body.pC, body.root, body.nullifierHash, body.recipient, BigInt(body.amount)] as const
         : null
       : typeof body.newCommitment === 'string' && typeof body.encryptedNote === 'string'
         ? [body.pA, body.pB, body.pC, body.root, body.nullifierHash, body.newCommitment, body.encryptedNote] as const
