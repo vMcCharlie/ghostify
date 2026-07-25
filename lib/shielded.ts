@@ -1,21 +1,18 @@
-import { buildMimc7 } from 'circomlibjs';
-import { toHex } from 'viem';
+import * as secp from '@noble/secp256k1';
+import { bytesToHex, hexToBytes, toHex } from 'viem';
 
 export type ShieldedNote = { secret: string; nullifier: string; commitment: `0x${string}`; createdAt: number; spent?: boolean };
+export type ReceiveProfile = { privateKey: `0x${string}`; publicKey: `0x${string}` };
 const FIELD_SIZE = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-
-function randomField() {
-  const bytes = crypto.getRandomValues(new Uint8Array(31));
-  let value = 0n;
-  for (const byte of bytes) value = (value << 8n) + BigInt(byte);
-  return value % FIELD_SIZE;
-}
-export async function createShieldedNote(): Promise<ShieldedNote> {
-  const secret = randomField(); const nullifier = randomField();
-  const { buildMimc7 } = await import('circomlibjs');
-  const mimc = await buildMimc7();
-  const commitment = BigInt(mimc.F.toString(mimc.hash(secret, nullifier)));
-  return { secret: secret.toString(), nullifier: nullifier.toString(), commitment: toHex(commitment, { size: 32 }), createdAt: Date.now() };
-}
-export function loadNotes() { if (typeof window === 'undefined') return [] as ShieldedNote[]; try { return JSON.parse(localStorage.getItem('ghostify-shielded-notes') || '[]') as ShieldedNote[]; } catch { return [] as ShieldedNote[]; } }
-export function saveNotes(notes: ShieldedNote[]) { localStorage.setItem('ghostify-shielded-notes', JSON.stringify(notes)); }
+const NOTE_STORE = 'ghostify-shielded-notes'; const PROFILE_STORE = 'ghostify-shielded-profile';
+function randomField() { const bytes = crypto.getRandomValues(new Uint8Array(31)); let value = 0n; for (const byte of bytes) value = (value << 8n) + BigInt(byte); return value % FIELD_SIZE; }
+async function mimc() { const { buildMimc7 } = await import('circomlibjs'); return buildMimc7(); }
+export async function hash2(left: bigint | string, right: bigint | string) { const h = await mimc(); return BigInt(h.F.toString(h.hash(BigInt(left), BigInt(right)))); }
+export async function createShieldedNote(): Promise<ShieldedNote> { const secret = randomField(); const nullifier = randomField(); const commitment = await hash2(secret, nullifier); return { secret: secret.toString(), nullifier: nullifier.toString(), commitment: toHex(commitment, { size: 32 }), createdAt: Date.now() }; }
+export function loadNotes() { if (typeof window === 'undefined') return [] as ShieldedNote[]; try { return JSON.parse(localStorage.getItem(NOTE_STORE) || '[]') as ShieldedNote[]; } catch { return [] as ShieldedNote[]; } }
+export function saveNotes(notes: ShieldedNote[]) { localStorage.setItem(NOTE_STORE, JSON.stringify(notes)); }
+export function getOrCreateProfile(): ReceiveProfile { const saved = localStorage.getItem(PROFILE_STORE); if (saved) return JSON.parse(saved); const privateKey = secp.utils.randomPrivateKey(); const profile = { privateKey: toHex(privateKey), publicKey: toHex(secp.getPublicKey(privateKey, false)) } as ReceiveProfile; localStorage.setItem(PROFILE_STORE, JSON.stringify(profile)); return profile; }
+async function cipherKey(shared: Uint8Array) { return crypto.subtle.importKey('raw', await crypto.subtle.digest('SHA-256', shared as unknown as BufferSource), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']); }
+export async function encryptNote(note: ShieldedNote, receiverPublicKey: `0x${string}`) { const ephemeral = secp.utils.randomPrivateKey(); const shared = secp.getSharedSecret(ephemeral, hexToBytes(receiverPublicKey), false); const iv = crypto.getRandomValues(new Uint8Array(12)); const data = new TextEncoder().encode(JSON.stringify(note)); const encrypted = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as unknown as BufferSource }, await cipherKey(shared), data as unknown as BufferSource)); return toHex(new TextEncoder().encode(JSON.stringify({ ephemeralPublicKey: toHex(secp.getPublicKey(ephemeral, false)), iv: toHex(iv), data: toHex(encrypted) }))); }
+export async function decryptNote(payload: `0x${string}`, profile: ReceiveProfile): Promise<ShieldedNote | null> { try { const parsed = JSON.parse(new TextDecoder().decode(hexToBytes(payload))) as { ephemeralPublicKey: `0x${string}`; iv: `0x${string}`; data: `0x${string}` }; const shared = secp.getSharedSecret(hexToBytes(profile.privateKey), hexToBytes(parsed.ephemeralPublicKey), false); const clear = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: hexToBytes(parsed.iv) as unknown as BufferSource }, await cipherKey(shared), hexToBytes(parsed.data) as unknown as BufferSource); return JSON.parse(new TextDecoder().decode(clear)) as ShieldedNote; } catch { return null; } }
+export async function merklePath(leaves: `0x${string}`[], target: `0x${string}`) { if (leaves.length > 8) throw new Error('This V1 pool has reached its eight-note limit.'); const index = leaves.findIndex(leaf => leaf.toLowerCase() === target.toLowerCase()); if (index < 0) throw new Error('Local note is not present in the pool.'); let layer = Array.from({ length: 8 }, (_, i) => i < leaves.length ? BigInt(leaves[i]) : 0n); const elements: string[] = []; const indices: string[] = []; let currentIndex = index; for (let level = 0; level < 3; level++) { elements.push(layer[currentIndex ^ 1].toString()); indices.push((currentIndex % 2).toString()); const next: bigint[] = []; for (let i = 0; i < layer.length; i += 2) next.push(await hash2(layer[i], layer[i + 1])); layer = next; currentIndex = Math.floor(currentIndex / 2); } return { root: layer[0], pathElements: elements, pathIndices: indices }; }

@@ -155,3 +155,16 @@ The verified testnet artifact set is deployed at:
 - 1 MON ShieldedPool: [`0xad16d1a439a239adaa202d47ae1ae9661c656112`](https://testnet.monadvision.com/address/0xad16d1a439a239adaa202d47ae1ae9661c656112)
 
 The pool bytecode and its `DENOMINATION()` value (`1 MON`) were verified through Monad Testnet RPC. This is a testnet-only, single-contribution ceremony deployment.
+
+## Enable private transfer relaying
+
+Set `RELAYER_PRIVATE_KEY` in Vercel as an **encrypted server-side** environment variable. Do not prefix it with `NEXT_PUBLIC_` and do not commit it. The `/api/relay` endpoint uses it to submit a proof-validated `privateTransfer` and pay Monad Testnet gas.
+
+Test the full flow with two browser profiles:
+
+1. **Receiver profile:** open Ghostify, copy the displayed shielded receive key.
+2. **Sender profile:** connect a funded testnet wallet, deposit exactly 1 MON, then paste the receiver key and select **Prove and send privately**.
+3. The sender browser constructs the Merkle path, creates the Groth16 proof locally, and sends only the proof plus encrypted note through the relayer.
+4. **Receiver profile:** select **Scan for private notes**. The received note appears only after local decryption with that profile's private receive key.
+
+Do not clear browser data while you have a note: this V1 has no backup or withdrawal UI yet.
