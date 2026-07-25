@@ -1,0 +1,43 @@
+name: Build shielded-pool test artifacts
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'circuits/**'
+      - 'scripts/generate-shielded-test-input.mjs'
+      - '.github/workflows/zk-artifacts.yml'
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install native Circom 2
+        run: |
+          git clone --depth 1 --branch v2.2.2 https://github.com/iden3/circom.git /tmp/circom
+          cargo build --release --manifest-path /tmp/circom/Cargo.toml
+          echo "/tmp/circom/target/release" >> $GITHUB_PATH
+      - name: Install dependencies
+        run: npm ci
+      - name: Compile, create test ceremony, and prove
+        run: |
+          mkdir -p build/zk
+          circom circuits/shielded_spend.circom --r1cs --wasm --sym -o build/zk
+          npx snarkjs powersoftau new bn128 12 build/zk/pot_0000.ptau
+          npx snarkjs powersoftau contribute build/zk/pot_0000.ptau build/zk/pot_0001.ptau --name="CI test contribution" -e="${{ github.run_id }}-${{ github.sha }}"
+          npx snarkjs powersoftau prepare phase2 build/zk/pot_0001.ptau build/zk/pot_final.ptau
+          npx snarkjs groth16 setup build/zk/shielded_spend.r1cs build/zk/pot_final.ptau build/zk/spend_0000.zkey
+          npx snarkjs zkey contribute build/zk/spend_0000.zkey build/zk/shielded_spend_final.zkey --name="CI circuit contribution" -e="${{ github.run_id }}-circuit"
+          node scripts/generate-shielded-test-input.mjs build/zk/test_input.json
+          npx snarkjs groth16 fullprove build/zk/test_input.json build/zk/shielded_spend_js/shielded_spend.wasm build/zk/shielded_spend_final.zkey build/zk/proof.json build/zk/public.json
+          npx snarkjs zkey export verificationkey build/zk/shielded_spend_final.zkey build/zk/verification_key.json
+          npx snarkjs groth16 verify build/zk/verification_key.json build/zk/public.json build/zk/proof.json
+          npx snarkjs zkey export solidityverifier build/zk/shielded_spend_final.zkey build/zk/ShieldedSpendVerifier.sol
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghostify-zk-testnet-artifacts
+          path: build/zk/
+          retention-days: 14

@@ -121,3 +121,18 @@ Shared Monad Testnet registry: [`0xbccf72b08df5a379fc54b3ccef785cc9b1091651`](ht
 ## Shielded-pool V1
 
 The repository now includes a separate, testnet-only fixed-denomination shielded-pool foundation: [`docs/SHIELDED_POOL_V1.md`](docs/SHIELDED_POOL_V1.md). It uses a real Circom/Groth16 circuit, MiMC commitment tree, nullifiers, and proof-gated output commitments. It is deliberately not connected to the live frontend or deployed with the local test ceremony; see the document for the required Linux/macOS proving flow and security boundary.
+
+## Run the shielded-pool testnet frontend
+
+1. In GitHub, open **Actions ? Build shielded-pool test artifacts ? Run workflow**. Download the successful `ghostify-zk-testnet-artifacts` artifact. The workflow uses native Linux Circom, creates a test-only ceremony, and verifies a sample proof.
+2. On a secure machine, extract the artifact, copy its generated `ShieldedSpendVerifier.sol` into `contracts/src/`, and set a **new disposable Monad Testnet** deployer key only in that shell. Run `node scripts/deploy-shielded-pool.mjs`.
+3. Host `shielded_spend_js/shielded_spend.wasm` and `shielded_spend_final.zkey` as public static files (Vercel public assets, a release asset, or object storage). The proving key is public; note secrets are not.
+4. Set these Vercel variables and redeploy:
+
+```text
+NEXT_PUBLIC_SHIELDED_POOL_ADDRESS=<printed pool address>
+NEXT_PUBLIC_ZK_WASM_URL=<public wasm URL>
+NEXT_PUBLIC_ZK_ZKEY_URL=<public zkey URL>
+```
+
+The homepage then enables the 1 MON deposit flow. The private-send control remains guarded until its browser proof and relayer module are connected to the published artifact set.
