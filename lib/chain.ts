@@ -14,3 +14,4 @@ export const SHIELDED_POOL_ABI = [
   { type: 'event', name: 'PrivateTransfer', inputs: [{ indexed: true, name: 'nullifierHash', type: 'bytes32' }, { indexed: true, name: 'newCommitment', type: 'bytes32' }, { indexed: false, name: 'encryptedNote', type: 'bytes' }, { indexed: false, name: 'newRoot', type: 'bytes32' }] },
   { type: 'event', name: 'PrivateWithdrawal', inputs: [{ indexed: true, name: 'nullifierHash', type: 'bytes32' }, { indexed: true, name: 'recipient', type: 'address' }, { indexed: false, name: 'amount', type: 'uint256' }, { indexed: false, name: 'recipientHash', type: 'bytes32' }] },
 ] as const;
+export const RECEIVE_KEY_REGISTRY_ABI = [{ type: 'function', name: 'register', stateMutability: 'nonpayable', inputs: [{ name: 'receiveKey', type: 'bytes' }], outputs: [] }, { type: 'function', name: 'keyOf', stateMutability: 'view', inputs: [{ name: 'wallet', type: 'address' }], outputs: [{ name: '', type: 'bytes' }] }] as const;
