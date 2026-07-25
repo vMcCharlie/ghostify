@@ -111,3 +111,9 @@ contracts/           Foundry contract and unit test
 Ghostify's `Announcer` contract is deployed at [`0x9ead9975dfa9dd5e54e86ce20f14de132f49fdea`](https://testnet.monadvision.com/address/0x9ead9975dfa9dd5e54e86ce20f14de132f49fdea). Set this as `NEXT_PUBLIC_ANNOUNCER_ADDRESS` to use the shared testnet registry.
 
 Deployment transaction: [`0xe7b924a89c816de88e9175bda32c70fa0588dfffcd0974e0d4434f8613ebdfe0`](https://testnet.monadvision.com/tx/0xe7b924a89c816de88e9175bda32c70fa0588dfffcd0974e0d4434f8613ebdfe0).
+
+## Wallet address receiving
+
+Receivers can now register their public Ghostify receive keys against their normal Monad wallet address. Once registered, senders may paste that familiar `0x...` address and Ghostify resolves the public keys before creating the private payment. The registry stores only public keys; it never receives funds or private keys.
+
+Shared Monad Testnet registry: [`0xbccf72b08df5a379fc54b3ccef785cc9b1091651`](https://testnet.monadvision.com/address/0xbccf72b08df5a379fc54b3ccef785cc9b1091651).

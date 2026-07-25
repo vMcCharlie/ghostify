@@ -15,3 +15,8 @@ export const ANNOUNCER_ABI = [{ type: 'event', name: 'Announcement', inputs: [
 ] }, { type: 'function', name: 'announce', stateMutability: 'nonpayable', inputs: [
   { name: 'schemeId', type: 'uint256' }, { name: 'stealthAddress', type: 'address' }, { name: 'ephemeralPubKey', type: 'bytes' }, { name: 'metadata', type: 'bytes' }
 ], outputs: [] }] as const;
+
+export const REGISTRY_ABI = [
+  { type: 'function', name: 'resolve', stateMutability: 'view', inputs: [{ name: 'wallet', type: 'address' }], outputs: [{ name: 'spendingPublicKey', type: 'bytes' }, { name: 'viewingPublicKey', type: 'bytes' }] },
+  { type: 'function', name: 'register', stateMutability: 'nonpayable', inputs: [{ name: 'spendingPublicKey', type: 'bytes' }, { name: 'viewingPublicKey', type: 'bytes' }], outputs: [] }
+] as const;
