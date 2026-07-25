@@ -39,10 +39,11 @@ NEXT_PUBLIC_SHIELDED_POOL_ADDRESS=0xad16d1a439a239adaa202d47ae1ae9661c656112
 NEXT_PUBLIC_SHIELDED_POOL_START_BLOCK=48041968
 NEXT_PUBLIC_ZK_WASM_URL=/zk/shielded_spend.wasm
 NEXT_PUBLIC_ZK_ZKEY_URL=/zk/shielded_spend_final.zkey
+NEXT_PUBLIC_MONAD_RPC_URL=<a browser-safe Monad RPC URL>
 RELAYER_PRIVATE_KEY=<server-only testnet relayer key>
 ```
 
-Never prefix `RELAYER_PRIVATE_KEY` with `NEXT_PUBLIC_`.
+Use a reliable browser-safe RPC provider for `NEXT_PUBLIC_MONAD_RPC_URL` in production; it is intentionally visible to the browser, so do not use a secret or privileged credential. Never prefix `RELAYER_PRIVATE_KEY` with `NEXT_PUBLIC_`.
 
 ## ZK artifacts
 
