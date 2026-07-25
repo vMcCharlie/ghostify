@@ -56,6 +56,20 @@ export default function ShieldedPoolPage() {
   function disconnect() { setWallet(''); setStatus(''); }
   async function poolLeaves() { const events = await poolEvents(); return events.map(log => ({ commitment: log.eventName === 'Deposit' ? log.args.commitment : log.args.newCommitment, block: log.blockNumber, index: log.logIndex })).sort((a, b) => a.block === b.block ? Number(a.index - b.index) : a.block < b.block ? -1 : 1).map(item => item.commitment); }
   function selectedNote() { return notes.find(note => !note.spent); }
+  async function waitForPoolPath(commitment: `0x${string}`) {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      try { return await merklePath(await poolLeaves(), commitment); }
+      catch (error) {
+        lastError = error;
+        if (!/Local note is not present in the pool/i.test(error instanceof Error ? error.message : String(error))) throw error;
+        setButtonLabel('Confirming payment...');
+        setStatus('Confirming your payment. This usually takes a few seconds...');
+        await pause(1_250);
+      }
+    }
+    throw new Error('Your payment is still confirming. Please keep this tab open and try again in a moment.');
+  }
 
   async function sendNow() {
     if (!configured) return setStatus('Ghostify is still being configured.');
@@ -87,7 +101,7 @@ export default function ShieldedPoolPage() {
       }
       setButtonLabel('Securing payment...');
       setStatus('Securing your payment...');
-      const path = await merklePath(await poolLeaves(), note.commitment);
+      const path = await waitForPoolPath(note.commitment);
       const delay = 600 + Math.floor(Math.random() * 901);
       setStatus(`Sending securely in ${Math.ceil(delay / 1000)} seconds. Keep this tab open.`);
       await pause(delay);
