@@ -16,3 +16,4 @@ circuits/*.zkey
 circuits/*_js/
 circuits/test_*.json
 contracts/src/ShieldedSpendVerifier.sol
+circuits/verification_key.json
