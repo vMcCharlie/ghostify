@@ -64,7 +64,7 @@ node scripts/deploy-shielded-pool.mjs
 6. In Vercel set all values from `.env.example`, including the new pool address/start block and the server-only `RELAYER_PRIVATE_KEY`. Set `NEXT_PUBLIC_PROTOCOL_VERSION=v3` only after all artifacts and the V3 pool are deployed.
 7. Redeploy, then test with three separate browser profiles/wallets: deposit a non-round test amount, private-send it, scan in the receiver profile, then withdraw the entire note to a third test wallet.
 
-For Alchemy Monad Testnet free tier, keep `NEXT_PUBLIC_LOG_QUERY_BLOCK_RANGE=10`.
+Use the official Monad Testnet RPC with `NEXT_PUBLIC_LOG_QUERY_BLOCK_RANGE=100` for V3 event scanning.
 
 ## Retired pools
 
