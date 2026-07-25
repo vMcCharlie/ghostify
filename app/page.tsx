@@ -12,6 +12,7 @@ const poolStartBlock = BigInt(process.env.NEXT_PUBLIC_SHIELDED_POOL_START_BLOCK 
 const logQueryBlockRange = 100n;
 const client = createPublicClient({ chain: monadTestnet, transport: http(undefined, { retryCount: 0 }) });
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 const isRateLimit = (error: unknown) => /limited to|rate limit|too many requests|429/i.test(error instanceof Error ? error.message : String(error));
 const displayError = (error: unknown) => isRateLimit(error) ? 'Monad RPC is busy. Ghostify slowed down and retried; please try again.' : error instanceof Error ? error.message : 'The request could not be completed.';
 const proof = (result: any) => ({ pA: [result.proof.pi_a[0], result.proof.pi_a[1]], pB: [[result.proof.pi_b[0][1], result.proof.pi_b[0][0]], [result.proof.pi_b[1][1], result.proof.pi_b[1][0]]], pC: [result.proof.pi_c[0], result.proof.pi_c[1]] });
@@ -65,7 +66,8 @@ export default function ShieldedPoolPage() {
     const existing = selectedNote();
     if (existing && BigInt(existing.amount) !== value) return setStatus(`A ${formatEther(BigInt(existing.amount))} MON payment is pending. Enter that amount to finish it.`);
     setSuccess(null);
-    setButtonLabel('Checking recipient...');
+    setButtonLabel('Verifying address...');
+    await nextFrame();
     setBusy(true);
     try {
       let storedNotes = notes;
@@ -86,7 +88,7 @@ export default function ShieldedPoolPage() {
       setButtonLabel('Securing payment...');
       setStatus('Securing your payment...');
       const path = await merklePath(await poolLeaves(), note.commitment);
-      const delay = 1_000 + Math.floor(Math.random() * 2_001);
+      const delay = 600 + Math.floor(Math.random() * 901);
       setStatus(`Sending securely in ${Math.ceil(delay / 1000)} seconds. Keep this tab open.`);
       await pause(delay);
       setButtonLabel('Finalizing payment...');
