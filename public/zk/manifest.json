@@ -1,0 +1,13 @@
+{
+    "circuit":  "shielded_spend",
+    "wasm":  {
+                 "sha256":  "352e1a71a750d042c0b39827203ec2e906de0df1448fa3b898d32937b7681641",
+                 "file":  "shielded_spend.wasm"
+             },
+    "version":  "testnet-v1",
+    "zkey":  {
+                 "sha256":  "0e96f5382b37006a01ea1c8998fdbf71eb6888fa4ea817424b2fc3ca1ec001c6",
+                 "file":  "shielded_spend_final.zkey"
+             },
+    "verifierSource":  "ShieldedSpendVerifier.sol"
+}

@@ -136,3 +136,12 @@ NEXT_PUBLIC_ZK_ZKEY_URL=<public zkey URL>
 ```
 
 The homepage then enables the 1 MON deposit flow. The private-send control remains guarded until its browser proof and relayer module are connected to the published artifact set.
+
+## Pinned testnet ZK artifacts
+
+The current testnet verifier and browser artifacts are pinned in `public/zk/` and served by Vercel at `/zk/`. Their checksums are recorded in `public/zk/manifest.json`:
+
+- WASM SHA-256: `352e1a71a750d042c0b39827203ec2e906de0df1448fa3b898d32937b7681641`
+- Proving key SHA-256: `0e96f5382b37006a01ea1c8998fdbf71eb6888fa4ea817424b2fc3ca1ec001c6`
+
+The generated verifier source at `contracts/src/ShieldedSpendVerifier.sol` matches this artifact set. These parameters are testnet-only and must be replaced by an independently contributed ceremony before any production deployment.
