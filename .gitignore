@@ -8,3 +8,11 @@ broadcast
 /contracts/lib/
 *.key
 tsconfig.tsbuildinfo
+
+circuits/*.r1cs
+circuits/*.sym
+circuits/*.ptau
+circuits/*.zkey
+circuits/*_js/
+circuits/test_*.json
+contracts/src/ShieldedSpendVerifier.sol

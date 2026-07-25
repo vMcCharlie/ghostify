@@ -117,3 +117,7 @@ Deployment transaction: [`0xe7b924a89c816de88e9175bda32c70fa0588dfffcd0974e0d443
 Receivers can now register their public Ghostify receive keys against their normal Monad wallet address. Once registered, senders may paste that familiar `0x...` address and Ghostify resolves the public keys before creating the private payment. The registry stores only public keys; it never receives funds or private keys.
 
 Shared Monad Testnet registry: [`0xbccf72b08df5a379fc54b3ccef785cc9b1091651`](https://testnet.monadvision.com/address/0xbccf72b08df5a379fc54b3ccef785cc9b1091651).
+
+## Shielded-pool V1
+
+The repository now includes a separate, testnet-only fixed-denomination shielded-pool foundation: [`docs/SHIELDED_POOL_V1.md`](docs/SHIELDED_POOL_V1.md). It uses a real Circom/Groth16 circuit, MiMC commitment tree, nullifiers, and proof-gated output commitments. It is deliberately not connected to the live frontend or deployed with the local test ceremony; see the document for the required Linux/macOS proving flow and security boundary.
