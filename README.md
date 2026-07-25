@@ -3,6 +3,14 @@
 Ghostify V3 is an unaudited Monad Testnet prototype for variable-value, whole-note shielded transfers. A user deposits any positive MON amount into a value-bound note, privately transfers the entire note, or withdraws that entire note to a normal wallet.
 
 > Testnet only. Do not use real funds. This is a single-contribution test ceremony, not a production privacy system.
+## Live Monad Testnet V3
+
+- ShieldedPool: [`0xaaa2b48f1152a393eb30f60041060bb56f4f72fd`](https://testnet.monadvision.com/address/0xaaa2b48f1152a393eb30f60041060bb56f4f72fd)
+- Deposit verifier: [`0xc7ead905f77ea9d6b8b5970884cab7520b3e9ced`](https://testnet.monadvision.com/address/0xc7ead905f77ea9d6b8b5970884cab7520b3e9ced)
+- Transfer verifier: [`0xd1defd8d80ccde1d1a3efd18ba9a0f266cf237ba`](https://testnet.monadvision.com/address/0xd1defd8d80ccde1d1a3efd18ba9a0f266cf237ba)
+- Withdrawal verifier: [`0x6dabb097c50a3e83d8d8ad6034dfd6037b2d2308`](https://testnet.monadvision.com/address/0x6dabb097c50a3e83d8d8ad6034dfd6037b2d2308)
+- MiMC7: [`0x8348568753c8c80b68064c9f13e83a3e18be99e6`](https://testnet.monadvision.com/address/0x8348568753c8c80b68064c9f13e83a3e18be99e6)
+- Scanner start block: `48052284`
 
 ## Privacy model
 
