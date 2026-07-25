@@ -39,6 +39,8 @@ NEXT_PUBLIC_SHIELDED_POOL_ADDRESS=0xad16d1a439a239adaa202d47ae1ae9661c656112
 NEXT_PUBLIC_SHIELDED_POOL_START_BLOCK=48041968
 NEXT_PUBLIC_ZK_WASM_URL=/zk/shielded_spend.wasm
 NEXT_PUBLIC_ZK_ZKEY_URL=/zk/shielded_spend_final.zkey
+NEXT_PUBLIC_WITHDRAW_ZK_WASM_URL=/zk/shielded_withdraw.wasm
+NEXT_PUBLIC_WITHDRAW_ZK_ZKEY_URL=/zk/shielded_withdraw_final.zkey
 NEXT_PUBLIC_MONAD_RPC_URL=<a browser-safe Monad RPC URL>
 RELAYER_PRIVATE_KEY=<server-only testnet relayer key>
 ```
@@ -51,13 +53,25 @@ The browser files are pinned in `public/zk/`:
 
 - `shielded_spend.wasm`
 - `shielded_spend_final.zkey`
+- `shielded_withdraw.wasm` (V2 only)
+- `shielded_withdraw_final.zkey` (V2 only)
 - `manifest.json` with SHA-256 checksums
 
-The matching circuit is `circuits/shielded_spend.circom`; the pool implementation is `contracts/src/ShieldedPool.sol`. The native Linux GitHub Actions pipeline is `.github/workflows/zk-artifacts.yml`.
+The matching circuits are `circuits/shielded_spend.circom` and `circuits/shielded_withdraw.circom`; the pool implementation is `contracts/src/ShieldedPool.sol`. The native Linux GitHub Actions pipeline is `.github/workflows/zk-artifacts.yml`.
 
 ## Known scope limits
 
 - Deposits are public and fixed at 1 MON.
 - The pool tree is depth 3 (eight notes) for the testnet demo.
-- There is no withdrawal circuit or UI yet.
+- Withdrawal is available only after deploying the V2 pool and configuring its separate verified withdrawal artifacts. A withdrawal transfers exactly 1 MON to a public wallet address; the identity of the spent note remains hidden.
+- The currently deployed V1 pool has no withdrawal method and cannot be upgraded. Never deposit additional MON into it.
 - The test ceremony is not production-safe.
+
+## Deploy withdrawal-capable V2
+
+1. Push this revision and wait for the **Build shielded-pool test artifacts** GitHub Action to pass. Download its `ghostify-zk-testnet-artifacts` artifact.
+2. Copy `ShieldedWithdrawVerifier.sol` from the artifact into `contracts/src/`. Copy `shielded_withdraw_js/shielded_withdraw.wasm` and `shielded_withdraw_final.zkey` into `public/zk/`.
+3. Verify the withdrawal proof with the artifact's exported verification key before deployment. This repository's CI does this as a required check, but it is still a test ceremonyÃ¢â‚¬â€not production setup.
+4. With a disposable funded testnet deployer, run `MONAD_RPC_URL=<rpc> PRIVATE_KEY=<key> node scripts/deploy-shielded-pool.mjs`. Record the new pool, both verifier, and MiMC addresses printed by the script.
+5. In Vercel, replace `NEXT_PUBLIC_SHIELDED_POOL_ADDRESS` and `NEXT_PUBLIC_SHIELDED_POOL_START_BLOCK` with the V2 values, then set both `NEXT_PUBLIC_WITHDRAW_ZK_*` variables shown above. Keep `RELAYER_PRIVATE_KEY` server-only and fund it with testnet MON for gas.
+6. Redeploy Vercel. Test with a new 1 MON V2 deposit only: transfer to a second browser profile, scan, withdraw to a third testnet wallet, and verify the pool balance decreases by exactly 1 MON.

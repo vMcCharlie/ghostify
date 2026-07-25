@@ -26,7 +26,8 @@ async function deploy(artifact, args = []) {
   return receipt.contractAddress;
 }
 
-const verifier = await deploy(compile('contracts/src/ShieldedSpendVerifier.sol', 'Groth16Verifier'));
+const transferVerifier = await deploy(compile('contracts/src/ShieldedSpendVerifier.sol', 'Groth16Verifier'));
+const withdrawVerifier = await deploy(compile('contracts/src/ShieldedWithdrawVerifier.sol', 'Groth16Verifier'));
 const mimc = await deploy({ abi: [{ type: 'function', name: 'MiMCpe7', stateMutability: 'pure', inputs: [{ type: 'uint256', name: 'in_x' }, { type: 'uint256', name: 'in_k' }], outputs: [{ type: 'uint256', name: 'out_x' }] }], bytecode: mimc7Contract.createCode('mimc', 91) });
-const pool = await deploy(compile('contracts/src/ShieldedPool.sol', 'ShieldedPool'), [mimc, verifier]);
-console.log(JSON.stringify({ verifier, mimc, pool }, null, 2));
+const pool = await deploy(compile('contracts/src/ShieldedPool.sol', 'ShieldedPool'), [mimc, transferVerifier, withdrawVerifier]);
+console.log(JSON.stringify({ transferVerifier, withdrawVerifier, mimc, pool }, null, 2));

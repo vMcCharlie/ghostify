@@ -2,12 +2,12 @@
 pragma solidity ^0.8.24;
 
 interface IMiMC7 { function MiMCpe7(uint256 left, uint256 right) external view returns (uint256); }
-interface IShieldedSpendVerifier {
-    function verifyProof(uint[2] calldata pA, uint[2][2] calldata pB, uint[2] calldata pC, uint[3] calldata publicSignals) external view returns (bool);
-}
+interface IShieldedSpendVerifier { function verifyProof(uint[2] calldata pA, uint[2][2] calldata pB, uint[2] calldata pC, uint[3] calldata publicSignals) external view returns (bool); }
+interface IShieldedWithdrawVerifier { function verifyProof(uint[2] calldata pA, uint[2][2] calldata pB, uint[2] calldata pC, uint[3] calldata publicSignals) external view returns (bool); }
 
-/// @notice Testnet-only 1 MON shielded note pool. No direct withdrawals are implemented.
-/// @dev A transfer consumes one hidden note and creates another note of the same denomination.
+/// @notice Testnet-only fixed-denomination shielded pool.
+/// @dev Deposits are public. Transfers and withdrawals prove note ownership
+/// without revealing which deposited leaf was spent. This contract is unaudited.
 contract ShieldedPool {
     uint256 public constant DENOMINATION = 1 ether;
     uint256 public constant TREE_DEPTH = 3;
@@ -15,6 +15,7 @@ contract ShieldedPool {
 
     IMiMC7 public immutable mimc;
     IShieldedSpendVerifier public immutable verifier;
+    IShieldedWithdrawVerifier public immutable withdrawVerifier;
     bytes32[TREE_DEPTH + 1] public zeros;
     bytes32[TREE_DEPTH] public filledSubtrees;
     bytes32 public currentRoot;
@@ -24,10 +25,13 @@ contract ShieldedPool {
 
     event Deposit(bytes32 indexed commitment, uint32 leafIndex, bytes32 newRoot);
     event PrivateTransfer(bytes32 indexed nullifierHash, bytes32 indexed newCommitment, bytes encryptedNote, bytes32 newRoot);
+    event PrivateWithdrawal(bytes32 indexed nullifierHash, address indexed recipient, bytes32 recipientHash);
 
-    constructor(address mimc_, address verifier_) {
+    constructor(address mimc_, address verifier_, address withdrawVerifier_) {
+        require(mimc_ != address(0) && verifier_ != address(0) && withdrawVerifier_ != address(0), "zero dependency");
         mimc = IMiMC7(mimc_);
         verifier = IShieldedSpendVerifier(verifier_);
+        withdrawVerifier = IShieldedWithdrawVerifier(withdrawVerifier_);
         zeros[0] = bytes32(0);
         for (uint256 i; i < TREE_DEPTH; ++i) {
             zeros[i + 1] = _hash(zeros[i], zeros[i]);
@@ -47,15 +51,7 @@ contract ShieldedPool {
         emit Deposit(commitment, leafIndex, currentRoot);
     }
 
-    function privateTransfer(
-        uint[2] calldata pA,
-        uint[2][2] calldata pB,
-        uint[2] calldata pC,
-        bytes32 root,
-        bytes32 nullifierHash,
-        bytes32 newCommitment,
-        bytes calldata encryptedNote
-    ) external {
+    function privateTransfer(uint[2] calldata pA, uint[2][2] calldata pB, uint[2] calldata pC, bytes32 root, bytes32 nullifierHash, bytes32 newCommitment, bytes calldata encryptedNote) external {
         require(knownRoots[root], "unknown root");
         require(!nullifierSpent[nullifierHash], "note already spent");
         require(uint256(nullifierHash) < FIELD_SIZE && uint256(newCommitment) < FIELD_SIZE, "public input outside field");
@@ -69,20 +65,28 @@ contract ShieldedPool {
         emit PrivateTransfer(nullifierHash, newCommitment, encryptedNote, currentRoot);
     }
 
+    function privateWithdraw(uint[2] calldata pA, uint[2][2] calldata pB, uint[2] calldata pC, bytes32 root, bytes32 nullifierHash, address payable recipient) external {
+        require(recipient != address(0), "zero recipient");
+        require(knownRoots[root], "unknown root");
+        require(!nullifierSpent[nullifierHash], "note already spent");
+        require(uint256(nullifierHash) < FIELD_SIZE, "public input outside field");
+        bytes32 recipientHash = _hash(bytes32(uint256(uint160(address(recipient)))), bytes32(0));
+        uint[3] memory publicSignals = [uint256(root), uint256(nullifierHash), uint256(recipientHash)];
+        require(withdrawVerifier.verifyProof(pA, pB, pC, publicSignals), "invalid withdrawal proof");
+        nullifierSpent[nullifierHash] = true;
+        (bool sent,) = recipient.call{value: DENOMINATION}("");
+        require(sent, "withdrawal failed");
+        emit PrivateWithdrawal(nullifierHash, recipient, recipientHash);
+    }
+
     function _insert(bytes32 leaf, uint32 index) private returns (bytes32 current) {
         current = leaf;
         for (uint256 level; level < TREE_DEPTH; ++level) {
-            if (index % 2 == 0) {
-                filledSubtrees[level] = current;
-                current = _hash(current, zeros[level]);
-            } else {
-                current = _hash(filledSubtrees[level], current);
-            }
+            if (index % 2 == 0) { filledSubtrees[level] = current; current = _hash(current, zeros[level]); }
+            else { current = _hash(filledSubtrees[level], current); }
             index /= 2;
         }
     }
 
-    function _hash(bytes32 left, bytes32 right) private view returns (bytes32) {
-        return bytes32(mimc.MiMCpe7(uint256(left), uint256(right)));
-    }
+    function _hash(bytes32 left, bytes32 right) private view returns (bytes32) { return bytes32(mimc.MiMCpe7(uint256(left), uint256(right))); }
 }
